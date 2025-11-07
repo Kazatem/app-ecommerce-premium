@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { Search, ShoppingCart, User, Star, MessageCircle, TrendingUp, Package, Heart, Filter, Grid, List, Plus, Loader2, LogOut, Sparkles, Zap, Gift, Crown, CreditCard, Settings, Menu, X, MapPin, Truck, Shield, ChevronDown, Bell, Percent, Eye, RotateCcw, Compare, Tag, Award, Clock } from 'lucide-react'
+import { Search, ShoppingCart, User, Star, MessageCircle, TrendingUp, Package, Heart, Filter, Grid, List, Plus, Loader2, LogOut, Sparkles, Zap, Gift, Crown, CreditCard, Settings, Menu, X, MapPin, Truck, Shield, ChevronDown, Bell, Percent, Eye, RotateCcw, GitCompare, Tag, Award, Clock } from 'lucide-react'
 import { Product } from '@/lib/types'
 import { formatPrice } from '@/lib/utils'
 import Cart from '@/components/Cart'
@@ -904,7 +904,7 @@ export default function KazaTemImports() {
                   : 'bg-white/80 text-gray-600 hover:bg-white'
               }`}
             >
-              <Compare className="w-4 h-4" />
+              <GitCompare className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -1316,7 +1316,7 @@ export default function KazaTemImports() {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-8">
         <div className="flex items-center space-x-3 mb-4">
-          <Compare className="w-8 h-8 text-blue-200" />
+          <GitCompare className="w-8 h-8 text-blue-200" />
           <h1 className="text-3xl font-black">Comparar Produtos</h1>
         </div>
         <p className="text-blue-100">
@@ -1326,7 +1326,7 @@ export default function KazaTemImports() {
 
       {compareProducts.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow-md">
-          <Compare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <GitCompare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-medium text-gray-900 mb-2">
             Nenhum produto para comparar
           </h3>
@@ -1542,8 +1542,21 @@ export default function KazaTemImports() {
       )
     }
 
+    // Calcular métricas corretamente para revendedores
     const totalSales = cartTotal
-    const commission = isReseller ? totalSales * 0.2 : 0
+    const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+    
+    // Para revendedores: calcular com base no preço especial (20% desconto)
+    const resellerTotal = isReseller ? cartItems.reduce((sum, item) => {
+      const resellerPrice = item.price * 0.8 // 20% desconto para revendedor
+      return sum + (resellerPrice * item.quantity)
+    }, 0) : totalSales
+    
+    // Comissão baseada no preço público (não no preço de revendedor)
+    const commission = isReseller ? totalSales * 0.25 : 0 // 25% de comissão sobre preço público
+    
+    // Margem de lucro para revendedores (diferença entre preço público e preço de revendedor)
+    const profit = isReseller ? totalSales - resellerTotal : 0
 
     return (
       <div className="space-y-6">
@@ -1634,32 +1647,32 @@ export default function KazaTemImports() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { 
-              title: "Total do Carrinho", 
+              title: isReseller ? "Valor Total (Público)" : "Total do Carrinho", 
               value: formatPrice(totalSales), 
               change: "+15%",
               icon: TrendingUp,
               color: "bg-green-500"
             },
             { 
-              title: isReseller ? "Comissão" : "Total Gasto", 
-              value: formatPrice(commission || totalSales), 
+              title: isReseller ? "Seu Custo" : "Total Gasto", 
+              value: formatPrice(isReseller ? resellerTotal : totalSales), 
               change: "+12%",
+              icon: CreditCard,
+              color: "bg-blue-500"
+            },
+            { 
+              title: isReseller ? "Sua Comissão" : "Produtos", 
+              value: isReseller ? formatPrice(commission) : totalQuantity.toString(), 
+              change: "+25%",
               icon: Crown,
               color: "bg-yellow-500"
             },
             { 
-              title: "Produtos", 
-              value: cartItems.reduce((sum, item) => sum + item.quantity, 0).toString(), 
-              change: "+8%",
-              icon: Package,
-              color: "bg-blue-500"
-            },
-            { 
-              title: "Favoritos", 
-              value: favorites.length.toString(), 
-              change: "+5%",
-              icon: Heart,
-              color: "bg-red-500"
+              title: isReseller ? "Lucro Potencial" : "Favoritos", 
+              value: isReseller ? formatPrice(profit) : favorites.length.toString(), 
+              change: isReseller ? "+30%" : "+5%",
+              icon: isReseller ? Sparkles : Heart,
+              color: isReseller ? "bg-purple-500" : "bg-red-500"
             }
           ].map(({ title, value, change, icon: Icon, color }, index) => (
             <div key={index} className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
@@ -1710,8 +1723,16 @@ export default function KazaTemImports() {
                   <div className="text-right">
                     <div className="font-bold text-gray-900">{formatPrice(item.price * item.quantity)}</div>
                     {isReseller && (
-                      <div className="text-sm text-green-600 font-medium">
-                        Comissão: {formatPrice(item.price * item.quantity * 0.2)}
+                      <div className="space-y-1">
+                        <div className="text-sm text-blue-600 font-medium">
+                          Seu custo: {formatPrice(item.price * 0.8 * item.quantity)}
+                        </div>
+                        <div className="text-sm text-green-600 font-medium">
+                          Comissão: {formatPrice(item.price * item.quantity * 0.25)}
+                        </div>
+                        <div className="text-sm text-purple-600 font-medium">
+                          Lucro: {formatPrice((item.price * item.quantity) - (item.price * 0.8 * item.quantity))}
+                        </div>
                       </div>
                     )}
                   </div>
